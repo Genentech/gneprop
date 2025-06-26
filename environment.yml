@@ -1,0 +1,44 @@
+name: gneprop
+channels:
+  - pytorch
+  - nvidia
+  - pyg
+  - dglteam/label/cu121
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11.5
+  - pytorch=2.0.1
+  - pytorch-cuda=12.1
+  - h5py==3.9.0
+  - pyg==2.4.0
+  - dgl==2.0.0.cu121
+  - pandas==2.2.2
+  - nb_conda_kernels
+  - jupyterlab
+  - pip
+  - pip:
+    - rdkit==2023.3.2
+    - dgllife==0.3.2
+    - torchdata==0.7.1
+    - pydantic==1.10.15
+    - torchsampler==0.1.2
+    - torchvision==0.17.1
+    - torcheval==0.0.7
+    - pytorch-lightning==1.9.5
+    - lightning-bolts==0.7.0
+    - ray==2.7.0rc0
+    - ray[tune]
+    - ray[default]
+    - ax-platform==0.3.7
+    - async-timeout==4.0.3
+    - captum==0.7.0
+    - wandb==0.16.4
+    - matplotlib==3.8.3
+    - omegaconf==2.3.0
+    - git+https://github.com/bp-kelley/descriptastorus
+    - ipykernel
+    - umap-learn
+    - seaborn
+    - pyarrow
+    - Cython==3.0.11
