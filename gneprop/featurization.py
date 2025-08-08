@@ -83,7 +83,7 @@ def atom_features(atom: Chem.rdchem.Atom, functional_groups: List[int] = None) -
     return encoding
 
 
-def smiles_to_data(s, label=None, mol_features=None):
+def smiles_to_data(s, label=None, mol_features=None, legacy=False):
     mol = Chem.MolFromSmiles(s)
 
     new_order = rdmolfiles.CanonicalRankAtoms(mol)
@@ -121,8 +121,12 @@ def smiles_to_data(s, label=None, mol_features=None):
 
     edge_feature = torch.tensor(edge_feature, dtype=torch.float32)
 
-
-    n = Data(x=node_feature, edge_attr=edge_feature, edge_index=torch.tensor([src_list, dst_list], dtype=torch.int64))
+    if legacy:
+        node_feature_swp = node_feature
+        node_feature_swp[:, [110, 112]] = node_feature[:, [112, 110]]
+        n = Data(x=node_feature_swp, edge_attr=edge_feature, edge_index=torch.tensor([src_list, dst_list], dtype=torch.int64))
+    else:
+        n = Data(x=node_feature, edge_attr=edge_feature, edge_index=torch.tensor([src_list, dst_list], dtype=torch.int64))
 
     if label is not None:
         n.y = label

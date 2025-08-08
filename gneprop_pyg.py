@@ -41,7 +41,8 @@ from torchmetrics.functional.classification import auroc
 # from torchmetrics.functional.classification.average_precision import average_precision
 from tqdm import tqdm
 from typing import Union
-import learn2learn as l2l
+# import learn2learn as l2l
+import learn2learn.algorithms as algo
 from collections import defaultdict
 import clr
 import gneprop.utils
@@ -441,7 +442,8 @@ class GNEprop(pl.LightningModule):
             current_lr = self.hparams.lr
         else:
             current_lr = sch.get_last_lr()[0]
-        maml = l2l.algorithms.MAML(self, lr=current_lr, first_order=False, allow_unused=True, allow_nograd=True)
+        # maml = l2l.algorithms.MAML(self, lr=current_lr, first_order=False, allow_unused=True, allow_nograd=True)
+        maml = algo.MAML(self, lr=current_lr, first_order=False, allow_unused=True, allow_nograd=True)
 
         maml = maml.clone()
         maml_original = maml.clone()
@@ -1703,7 +1705,7 @@ if __name__ == '__main__':
     fixed_split = args.split_type in {'fixed', 'fixed_test_scaffold_rest'}
 
     data = load_dataset_multi_format(args.dataset_path, cluster_name=args.cluster_name, fixed_split=fixed_split,
-                                     target_name=args.target_name)
+                                     target_name=args.target_name, legacy=True)
 
     check_argument_post_data_loading(args, data)
 

@@ -273,7 +273,7 @@ class MolDatasetLightWeight(InMemoryDataset):
 
 class MolDatasetOD(torch.utils.data.Dataset):
     def __init__(self, smiles_list, y_list=None, cluster_list=None, separate_label=False, include_smiles=False,
-                 fixed_list=None, enable_vn=False):
+                 fixed_list=None, enable_vn=False, legacy=True):
         self.smiles = smiles_list
         self.ids = self.smiles  # for deepchem compatibility
         self.y = y_list
@@ -296,6 +296,7 @@ class MolDatasetOD(torch.utils.data.Dataset):
         self.enable_vn = enable_vn
         if self.enable_vn:
             self.vn = VirtualNode()
+        self.legacy = legacy
 
     def __len__(self):
         return len(self.smiles)
@@ -306,7 +307,8 @@ class MolDatasetOD(torch.utils.data.Dataset):
 
         n = self.smiles_to_data(self.smiles[idx],
                                 torch.tensor(self.y[idx]).float() if self.y is not None else None,
-                                self.mol_features[idx].unsqueeze(0) if hasattr(self, 'mol_features') else None)
+                                self.mol_features[idx].unsqueeze(0) if hasattr(self, 'mol_features') else None, 
+                                self.legacy)
 
         if self.enable_vn:
             n = self.vn(n)
@@ -329,15 +331,15 @@ class MolDatasetOD(torch.utils.data.Dataset):
         self.precomputed = True
 
     @staticmethod
-    def smiles_to_data(s, label=None, mol_features=None):
-        return smiles_to_data(s, label=label, mol_features=mol_features)
+    def smiles_to_data(s, label=None, mol_features=None, legacy=True):
+        return smiles_to_data(s, label=label, mol_features=mol_features, legacy=legacy)
 
     @staticmethod
     def mol_to_data(m, label=None, mol_features=None):
         return mol_to_data(m, label=label, mol_features=mol_features)
 
     @staticmethod
-    def load_df_dataset(df, cluster_name=None, smiles_name='SMILES', target_name='Activity', fixed_split=False, ):
+    def load_df_dataset(df, cluster_name=None, smiles_name='SMILES', target_name='Activity', fixed_split=False, legacy=True):
         dataset = df
         smiles = dataset[smiles_name].values
 
@@ -358,19 +360,19 @@ class MolDatasetOD(torch.utils.data.Dataset):
         else:
             fixed_list = None
 
-        return MolDatasetOD(smiles_list=smiles, y_list=y, cluster_list=clusters, fixed_list=fixed_list)
+        return MolDatasetOD(smiles_list=smiles, y_list=y, cluster_list=clusters, fixed_list=fixed_list, legacy=legacy)
 
     @staticmethod
-    def load_csv_dataset(csv_file, cluster_name=None, smiles_name='SMILES', target_name='Activity', fixed_split=False):
+    def load_csv_dataset(csv_file, cluster_name=None, smiles_name='SMILES', target_name='Activity', fixed_split=False, legacy=True):
         dataset = pd.read_csv(csv_file)
         return MolDatasetOD.load_df_dataset(dataset, cluster_name=cluster_name, smiles_name=smiles_name,
-                                            target_name=target_name, fixed_split=fixed_split)
+                                            target_name=target_name, fixed_split=fixed_split, legacy=legacy)
 
     @staticmethod
-    def load_ftr_dataset(ftr_file, cluster_name=None, smiles_name='SMILES', target_name='Activity', fixed_split=False):
+    def load_ftr_dataset(ftr_file, cluster_name=None, smiles_name='SMILES', target_name='Activity', fixed_split=False, legacy=True):
         dataset = pd.read_feather(ftr_file)
         return MolDatasetOD.load_df_dataset(dataset, cluster_name=cluster_name, smiles_name=smiles_name,
-                                            target_name=target_name, fixed_split=fixed_split)
+                                            target_name=target_name, fixed_split=fixed_split, legacy=legacy)
 
 
 class ConcatMolDataset(torch.utils.data.ConcatDataset):
@@ -950,7 +952,7 @@ except ImportError:
         raise NotImplementedError("Currently this functions require deepchem. Install deepchem to use this function")
 
 
-def load_dataset_multi_format(full_path: str, cluster_name=None, fixed_split=False, target_name='Activity', smiles_name='SMILES'):
+def load_dataset_multi_format(full_path: str, cluster_name=None, fixed_split=False, target_name='Activity', smiles_name='SMILES', legacy=True):
     File = full_path
     if 's3:' in full_path:
         fs = s3_setup()
@@ -961,9 +963,10 @@ def load_dataset_multi_format(full_path: str, cluster_name=None, fixed_split=Fal
         return MolDataset.load_from_full_path(File)
     elif full_path.endswith('.csv'):
         return MolDatasetOD.load_csv_dataset(File, cluster_name=cluster_name, fixed_split=fixed_split,
-                                             target_name=target_name, smiles_name=smiles_name)
+                                             target_name=target_name, smiles_name=smiles_name, legacy=legacy)
     elif full_path.endswith('.ftr'):
-        return MolDatasetOD.load_ftr_dataset(File, cluster_name=cluster_name, fixed_split=fixed_split, target_name=target_name, smiles_name=smiles_name)
+        return MolDatasetOD.load_ftr_dataset(File, cluster_name=cluster_name, fixed_split=fixed_split, 
+                                             target_name=target_name, smiles_name=smiles_name, legacy=legacy)
 
 
 def preprocess_output_data(train, preprocess_type):
