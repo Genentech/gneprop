@@ -215,6 +215,80 @@ class DropEdges(Augmentation):
         return cls(drop_p=drop_p, force_undirected=force_undirected, p_skip=p_skip)
 
 
+@register_augmentation('MoCL')
+class MoCL(Augmentation):
+    def __init__(self, rules, aug_times=1, p_skip=0.):
+        super().__init__(p_skip=p_skip)
+
+        assert aug_times >= 1
+        self.rules = rules
+        self.rules_smarts = [r['smarts'] for r in self.rules]
+        self.reactions = [AllChem.ReactionFromSmarts(r) for r in self.rules_smarts]
+        self.reactants = [r.GetReactants()[0] for r in self.reactions]
+        self.reactants_smiles = [Chem.MolToSmiles(i) for i in self.reactants]
+        self.reactants_groups = {}
+        for index, rs in enumerate(self.reactants_smiles):
+            self.reactants_groups[index] = set([_i for _i, _rs in enumerate(self.reactants_smiles) if _rs == rs])
+
+        self.num_reactions = len(self.reactions)
+        self.aug_times = aug_times
+
+        self.augmentation_type = AugmentationType.RDKIT_MOL
+
+    def transform(self, mol):
+        mol_prev = mol
+        for time in range(self.aug_times):
+            # random order of augmentations to try
+            aug_indices = list(range(self.num_reactions))
+            random.shuffle(aug_indices)
+
+            already_checked_reactants = set()
+
+            for aug_ix in aug_indices:
+                if aug_ix in already_checked_reactants:
+                    continue
+                if not mol_prev.HasSubstructMatch(self.reactants[aug_ix]):
+                    same_reactants_group = self.reactants_groups[aug_ix]
+                    already_checked_reactants.update(same_reactants_group)
+                    continue
+                rxn = self.reactions[aug_ix]
+                products = rxn.RunReactants((mol_prev,))
+                n_products = len(products)
+                if n_products > 0:  # successful reaction
+                    prod_ix = random.choice(range(n_products))
+                    product = products[prod_ix][0]
+                    try:
+                        Chem.SanitizeMol(product)
+                        mol_prev = product
+                    except:  # TODO: add detailed exception
+                        continue
+                    break
+            else:  # no valid reaction found for this molecule
+                return mol_prev
+
+        return mol_prev
+
+    def __repr__(self):
+        return f'MoCL(aug_times={self.aug_times}, p_skip={self.p_skip})'
+
+    @classmethod
+    def create_from_config(cls, config):
+        mode = config['mode']
+        if mode == 'inline':
+            rules = config['rules']
+        elif mode == 'path':
+            dir_path = os.path.dirname(os.path.realpath(__file__))
+            rules_path = os.path.join(dir_path, config['rules'])
+            rules = json.load(open(rules_path))
+        else:
+            raise ValueError('Invalid mode value.')
+
+        aug_times = config['aug_times']
+        p_skip = config['p_skip']
+        return cls(rules=rules, aug_times=aug_times, p_skip=p_skip)
+
+
+
 @register_augmentation('RepeatedAugmentation')
 class RepeatedAugmentation(Augmentation):
     def __init__(self, augmentation, min_number=1, max_number=1, p_skip=0.):
