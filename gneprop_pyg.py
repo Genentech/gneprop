@@ -641,11 +641,11 @@ class GNEprop(pl.LightningModule):
 
             rec = Recall(task=task_name, num_classes=num_classes, average=average).to(self.device)
             recall = rec(probs, labels)
-            self.log('{}_precision'.format(prefix), recall, prog_bar=True, sync_dist=True)
+            self.log('{}_recall'.format(prefix), recall, prog_bar=True, sync_dist=True)
 
             prec = Precision(task=task_name, num_classes=num_classes, average=average).to(self.device)
             precision = prec(probs, labels)
-            self.log('{}_recall'.format(prefix), precision, prog_bar=True, sync_dist=True)
+            self.log('{}_precision'.format(prefix), precision, prog_bar=True, sync_dist=True)
 
             if prefix == 'val':
                 return auc, average_precision_score, accuracy
