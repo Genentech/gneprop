@@ -19,8 +19,8 @@ best model (not reported in the manuscript), further improving it (AUPRC = 0.560
 
 Notice that GNEprop has not been explicitly hyper-optimized or evaluated on this dataset. 8 folds each.
 
-* `20240709-103356`: GNEprop trained on GNEtolC dataset with scaffold splitting
-* `20240709-103508`: GNEprop trained on GNEtolC dataset with scaffold-cluster splitting
+* `20250819-085119`: GNEprop trained on GNEtolC dataset with scaffold splitting
+* `20250819-093608`: GNEprop trained on GNEtolC dataset with scaffold-cluster splitting
 
 ### Self-supervised checkpoint
 * `20210827-082422`: self-supervised checkpoint
