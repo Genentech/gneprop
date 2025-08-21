@@ -1,5 +1,5 @@
 # GNEprop
-![GNEprop schema](figures/gneprop_schema.png "Title")
+![GNEprop schema](figures/GNEprop_schema.png "Title")
 
 GNEprop library associated with the manuscript: ["A high-throughput phenotypic screen combined with an ultra-large-scale deep learning-based virtual screening reveals novel scaffolds of antibacterial compounds"](https://www.biorxiv.org/content/10.1101/2024.09.11.612340v1) (updated version will be released soon).
 
@@ -17,7 +17,7 @@ for explainability, etc.
 Additionally, the repository includes datasets associated with the manuscript (primarly, the **GNEtolC dataset**)
 and pre-trained checkpoints.
 
-We are currently finalizing the release of this repository, stay tuned for more updates.
+We are currently finalizing the release of this repository and associated data/checkpoints, stay tuned for more updates.
 
 ## Getting Started
 
@@ -140,6 +140,8 @@ Refer to `gneprop_pyg.py` and `clr.py` for more details.
 ### Data Availability
 
 Data are available: `https://drive.google.com/drive/folders/1g3wZFa0jxadElcayJR0euvCWTWymXZ1J?usp=sharing`
+
+Data currently not available will be finalized in the next few weeks.
 
 In particular:
 * support_data:

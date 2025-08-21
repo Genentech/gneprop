@@ -26,4 +26,4 @@ Notice that GNEprop has not been explicitly hyper-optimized or evaluated on this
 * `20210827-082422`: self-supervised checkpoint
 
 ### GNEprop trained on HTS dataset
-* `20250811-202022`: GNEprop trained on the full HTS dataset (95/5 random splitting). 8 folds.
+* `20250811-202022`: [TO BE ADDED] GNEprop trained on the full HTS dataset (95/5 random splitting). 8 folds.
