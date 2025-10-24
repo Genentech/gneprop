@@ -17,8 +17,6 @@ for explainability, etc.
 Additionally, the repository includes datasets associated with the manuscript (primarly, the **GNEtolC dataset**)
 and pre-trained checkpoints.
 
-We are currently finalizing the release of this repository and associated data/checkpoints, stay tuned for more updates.
-
 ## Getting Started
 
 ### Dependencies
@@ -108,7 +106,7 @@ Filters definitions are included in `chem_utils.py`.
 
 #### UMAPs
 
-Examples of UMAP computations are included in YYY.
+Examples of UMAP computations are included as notebooks.
 
 #### Explainability
 
@@ -140,8 +138,6 @@ Refer to `gneprop_pyg.py` and `clr.py` for more details.
 ### Data Availability
 
 Data are available: `https://drive.google.com/drive/folders/1g3wZFa0jxadElcayJR0euvCWTWymXZ1J?usp=sharing`
-
-Data currently not available will be finalized in the next few weeks.
 
 In particular:
 * support_data:
