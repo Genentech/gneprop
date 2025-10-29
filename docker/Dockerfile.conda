@@ -1,0 +1,70 @@
+FROM continuumio/miniconda3:24.9.2-0 AS base
+
+RUN conda config --set solver libmamba
+
+ADD environment.yml environment.yml
+
+RUN conda env create -f environment.yml && rm environment.yml
+RUN sed -i "s/activate base/activate gneprop/" ~/.bashrc \
+	&& echo ". /opt/conda/etc/profile.d/conda.sh; conda activate gneprop" >> /etc/profile
+SHELL ["/bin/bash","-lc"]
+
+# Allow the download of supplemental data
+RUN conda install gdown
+
+#########################################################
+# build-essential base
+#########################################################
+
+FROM base as buildessential
+
+RUN apt update && apt install -y build-essential
+
+#########################################################
+# Build learn2learn
+#########################################################
+FROM buildessential AS learn2learn
+
+RUN ln -s /opt/conda/envs/gneprop/include/python3.11/cpython/longintrepr.h /opt/conda/envs/gneprop/include/python3.11/
+RUN git clone https://github.com/learnables/learn2learn.git \
+	&& cd learn2learn && make build \
+	&& python setup.py bdist_wheel
+
+#########################################################
+# Build GNEpropCPP
+#########################################################
+FROM buildessential AS gnecpp
+
+ADD GNEpropCPP GNEpropCPP
+RUN cd GNEpropCPP \
+	&& conda install -y pybind11 libboost-devel \
+	&& python setup.py bdist_wheel
+
+#########################################################
+# Finish build
+#########################################################
+FROM base
+
+ARG L2L_WHL=learn2learn-0.2.1-cp311-cp311-linux_x86_64.whl
+COPY --from=learn2learn /learn2learn/dist/${L2L_WHL} /${L2L_WHL}
+RUN pip list | awk '{print$1"=="$2}' | tail +3 > base_constraints.txt \
+	&& pip install -c base_constraints.txt /${L2L_WHL} \
+	&& rm ${L2L_WHL}
+
+ARG GNECPP_WHL=gnepropcpp-0.1-cp311-cp311-linux_x86_64.whl
+COPY --from=gnecpp /GNEpropCPP/dist/${GNECPP_WHL} /${GNECPP_WHL}
+RUN pip list | awk '{print$1"=="$2}' | tail +3 > base_constraints.txt \
+	&& pip install -c base_constraints.txt /${GNECPP_WHL} \
+	&& rm ${GNECPP_WHL}
+
+RUN mkdir /workspace && chmod a+rwx /workspace
+
+WORKDIR /workspace
+
+COPY *py LICENSE README.md /workspace/
+COPY config /workspace/config
+COPY gneprop /workspace/gneprop
+COPY Notebooks /workspace/Notebooks
+
+RUN chmod -R a+rwX /workspace
+

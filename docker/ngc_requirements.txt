@@ -1,0 +1,32 @@
+numpy~=1.24.0
+rdkit<2023
+scipy~=1.6
+umap-learn
+torch
+aioredis<2
+ax-platform
+botorch
+dgllife
+#lightning-bolts==0.6.0.post1
+lightning-bolts==0.7.0
+pytorch-lightning==1.9.0 #1.8.3post1 #
+ray==2.9.3
+ray[tune]
+ray[default]
+seaborn~=0.11
+tensorboard-plugin-wit
+tensorboardx<3
+google-api-core==2.10.0
+googleapis-common-protos==1.56.4
+jupyterlab
+test-tube
+pyarrow
+omegaconf<3
+s3fs
+wandb
+torchmetrics==0.7.0
+prometheus-client~=0.12
+websocket-client
+descriptastorus
+pytest #need only for testing purpose
+sh #need only for testing purpose

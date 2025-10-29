@@ -1,0 +1,188 @@
+# Early Access PyTorch Geometric (PyG) container on NGC
+ARG FROM_IMAGE_NAME=nvcr.io/nvdlfwea/pyg/pyg:23.01-py3
+ARG FROM_IMAGE_NAME=nvcr.io/nvidia/pyg:23.11-py3
+
+#ARG FROM_IMAGE_NAME=nvcr.io/nvidia/pytorch:22.08-py3
+#ARG FROM_IMAGE_NAME=nvcr.io/nvidia/pytorch:22.12-py3
+
+#############################
+# Build RDKit
+#############################
+FROM ${FROM_IMAGE_NAME} AS rdkit-build-env
+ENV DEBIAN_FRONTEND=noninteractive
+ARG BOOSTV=1.74
+
+RUN apt-get update \
+ && apt-get install -yq --no-install-recommends \
+    ca-certificates \
+    build-essential \
+    cmake \
+    wget \
+    libboost${BOOSTV}-dev \
+    libboost-iostreams${BOOSTV}-dev \
+    libboost-python${BOOSTV}-dev \
+    libboost-regex${BOOSTV}-dev \
+    libboost-serialization${BOOSTV}-dev \
+    libboost-system${BOOSTV}-dev \
+    libboost-thread${BOOSTV}-dev \
+    libcairo2-dev \
+    libeigen3-dev \
+    python3-dev \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /
+ARG RDKIT_VERSION=Release_2023_03_3
+#ARG RDKIT_VERSION=Release_2022_09_3
+RUN wget --quiet https://github.com/rdkit/rdkit/archive/${RDKIT_VERSION}.tar.gz \
+ && tar -xzf ${RDKIT_VERSION}.tar.gz \
+ && mv rdkit-${RDKIT_VERSION} rdkit \
+ && rm ${RDKIT_VERSION}.tar.gz
+
+RUN mkdir /rdkit/build
+
+RUN cd /rdkit/build && cmake -Wno-dev \
+    -D CMAKE_BUILD_TYPE=Release \
+    -D CMAKE_INSTALL_PREFIX=/usr \
+    -D Boost_NO_BOOST_CMAKE=ON \
+    -D PYTHON_EXECUTABLE=/usr/bin/python3 \
+    -D RDK_BUILD_AVALON_SUPPORT=ON \
+    -D RDK_BUILD_CAIRO_SUPPORT=ON \
+    -D RDK_BUILD_CPP_TESTS=OFF \
+    -D RDK_BUILD_INCHI_SUPPORT=ON \
+    -D RDK_BUILD_FREESASA_SUPPORT=ON \
+    -D RDK_INSTALL_INTREE=OFF \
+    -D RDK_INSTALL_STATIC_LIBS=OFF \
+    -D RDK_BUILD_YAEHMOP_SUPPORT=ON \
+    -D RDK_USE_FLEXBISON=OFF \
+    -D RDK_BUILD_CAIRO_SUPPORT=ON \
+    -D RDK_BUILD_THREADSAFE_SSS=ON \
+    -D RDK_TEST_MULTITHREADED=ON \
+    -D RDK_INSTALL_COMIC_FONTS=OFF \
+    ..
+
+RUN cd /rdkit/build \
+ && make -j $(nproc) \
+ && make install
+
+
+#############################
+# Build and GNEpropCPP
+#############################
+
+ADD GNEpropCPP /GNEpropCPP
+RUN cd /GNEpropCPP && CPATH=$CPATH:/usr/include/rdkit/ \
+	python setup.py bdist_wheel
+
+#########################################################
+# Build learn2learn
+#########################################################
+
+RUN git clone -b v0.2.1 https://github.com/learnables/learn2learn.git \
+	&& cd learn2learn && make build \
+	&& python setup.py bdist_wheel
+
+#############################
+# Install RDKit
+#############################
+FROM ${FROM_IMAGE_NAME}
+ENV DEBIAN_FRONTEND=noninteractive
+ARG BOOSTV=1.74
+
+# Install runtime dependencies
+RUN apt-get update \
+ && apt-get install -yq --no-install-recommends \
+    libboost-atomic${BOOSTV}.0 \
+    libboost-chrono${BOOSTV}.0 \
+    libboost-date-time${BOOSTV}.0 \
+    libboost-iostreams${BOOSTV}.0 \
+    libboost-python${BOOSTV}.0 \
+    libboost-regex${BOOSTV}.0 \
+    libboost-serialization${BOOSTV}.0 \
+    libboost-system${BOOSTV}.0 \
+    libboost-thread${BOOSTV}.0 \
+    libcairo2-dev \
+    python3-dev \
+    python3-cairo \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+# Copy rdkit installation from rdkit-build-env
+COPY --from=rdkit-build-env /usr/lib/libRDKit* /usr/lib/
+COPY --from=rdkit-build-env /usr/lib/cmake/rdkit/* /usr/lib/cmake/rdkit/
+COPY --from=rdkit-build-env /usr/share/RDKit /usr/share/RDKit
+COPY --from=rdkit-build-env /usr/include/rdkit /usr/include/rdkit
+COPY --from=rdkit-build-env /usr/local/lib/python3.10/dist-packages/rdkit /usr/local/lib/python3.10/dist-packages/rdkit
+
+#############################
+# Downgrade dependencies
+#############################
+RUN pip install "torchmetrics==0.7.0" "tensorboard==2.11.2" "protobuf~=3.20.1"
+
+#############################
+# Install DGL wheel
+#############################
+ARG DGL_VERSION=2.4.0
+
+WORKDIR /workspace/
+
+RUN pip list | awk '{print$1"=="$2}' | tail +3 > /root/base_constraints.txt \
+    && pip install -c /root/base_constraints.txt "dgl==${DGL_VERSION}" -f https://data.dgl.ai/wheels/torch-2.1/cu121/repo.html
+
+ENV DGLBACKEND=pytorch
+ENV OMP_NUM_THREADS=4
+
+#############################
+# Install GNEprop Dependencies
+#############################
+
+ADD docker/ngc_requirements.txt ngc_requirements.txt
+RUN pip list | awk '{print$1"=="$2}' | tail +3 > /root/base_constraints.txt \
+    && pip install -c /root/base_constraints.txt -r ngc_requirements.txt \
+    && rm -rf /root/.cache/pip ngc_requirements.txt
+
+# Install learn2learn
+ARG L2L_WHL=learn2learn-0.2.1-cp310-cp310-linux_x86_64.whl
+COPY --from=rdkit-build-env /learn2learn/dist/${L2L_WHL} /${L2L_WHL}
+RUN pip install -c /root/base_constraints.txt /${L2L_WHL} \
+	&& rm /${L2L_WHL}
+
+#############################
+# Build and Install GNEpropCPP
+#############################
+
+ARG GNEP_WHL=GNEpropCPP-0.1-cp310-cp310-linux_x86_64.whl
+COPY --from=rdkit-build-env /GNEpropCPP/dist/${GNEP_WHL} ${GNEP_WHL}
+RUN pip install ${GNEP_WHL} && rm ${GNEP_WHL}
+
+WORKDIR /workspace
+RUN chmod -R a+w /workspace
+
+#############################
+# Patch lightning bolts
+#############################
+
+#RUN curl -Lo patch https://patch-diff.githubusercontent.com/raw/Lightning-AI/lightning-bolts/pull/965.patch \
+#	&& cd /usr/local/lib/python3.10/dist-packages \
+#	&& patch -p1 < /workspace/patch \
+#	&& rm /workspace/patch
+
+#############################
+# Patch pytorch lightning
+#############################
+
+ADD pytorch_lightning_fix.patch /workspace/patch
+RUN cd /usr/local/lib/python3.10/dist-packages \
+	&& patch -p0 < /workspace/patch \
+	&& rm /workspace/patch
+
+#########################################################
+# Finish build
+#########################################################
+
+COPY *py LICENSE README.md /workspace/
+COPY config /workspace/config
+COPY gneprop /workspace/gneprop
+COPY Notebooks /workspace/Notebooks
+
+RUN chmod -R a+rwX /workspace
